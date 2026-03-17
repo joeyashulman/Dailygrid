@@ -42,16 +42,11 @@ export default function GameScreen() {
   );
   const [dropTarget, setDropTarget] = useState<{ x: number; y: number } | null>(null);
   const draggedTileIdRef = useRef<string | null>(null);
-  const hasWonRef = useRef(false);
   const stateRef = useRef<GameState | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
-
-  useEffect(() => {
-    hasWonRef.current = hasWon;
-  }, [hasWon]);
 
   // Preload dictionary so validation (blue valid words) works as soon as tiles are placed
   useEffect(() => {
@@ -60,40 +55,43 @@ export default function GameScreen() {
 
   const handleDragStart = useCallback(
     (_tileId: string, value: string, clientX: number, clientY: number) => {
-      if (hasWonRef.current) return;
+      if (hasWon) return;
       setDragPreview({ value, x: clientX, y: clientY });
     },
-    []
+    [hasWon]
   );
 
-  const handleDragMove = useCallback((clientX: number, clientY: number) => {
-    if (hasWonRef.current) return;
-    setDragPreview((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
-    const el = document.elementFromPoint(clientX, clientY);
-    const cellEl = el?.closest('[data-drop-cell]');
-    if (cellEl) {
-      const attr = cellEl.getAttribute('data-drop-cell');
-      if (attr) {
-        const [xs, ys] = attr.split(',');
-        const x = parseInt(xs, 10);
-        const y = parseInt(ys, 10);
-        if (!Number.isNaN(x) && !Number.isNaN(y)) {
-          setDropTarget({ x, y });
-          return;
+  const handleDragMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (hasWon) return;
+      setDragPreview((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
+      const el = document.elementFromPoint(clientX, clientY);
+      const cellEl = el?.closest('[data-drop-cell]');
+      if (cellEl) {
+        const attr = cellEl.getAttribute('data-drop-cell');
+        if (attr) {
+          const [xs, ys] = attr.split(',');
+          const x = parseInt(xs, 10);
+          const y = parseInt(ys, 10);
+          if (!Number.isNaN(x) && !Number.isNaN(y)) {
+            setDropTarget({ x, y });
+            return;
+          }
         }
       }
-    }
-    setDropTarget(null);
-  }, []);
+      setDropTarget(null);
+    },
+    [hasWon]
+  );
 
   const handleDragEnd = useCallback(() => {
-    if (hasWonRef.current) return;
+    if (hasWon) return;
     setDragPreview(null);
     setDropTarget(null);
-  }, []);
+  }, [hasWon]);
 
   const handleTileDrop = useCallback((tileId: string, x: number, y: number) => {
-    if (hasWonRef.current) return;
+    if (hasWon) return;
     const s = stateRef.current;
     if (!s) return;
     const grid = s.grid;
@@ -123,10 +121,10 @@ export default function GameScreen() {
     );
 
     setState({ ...s, grid: newGrid, rackTileIds: newRack });
-  }, []);
+  }, [hasWon]);
 
   const handleReturnTileToRack = useCallback((tileId: string) => {
-    if (hasWonRef.current) return;
+    if (hasWon) return;
     const s = stateRef.current;
     if (!s || s.rackTileIds.includes(tileId)) return;
     const newGrid = s.grid.map((row) =>
@@ -137,10 +135,10 @@ export default function GameScreen() {
       grid: newGrid,
       rackTileIds: [...s.rackTileIds, tileId],
     });
-  }, []);
+  }, [hasWon]);
 
   const handleRecallAll = useCallback(() => {
-    if (hasWonRef.current) return;
+    if (hasWon) return;
     const s = stateRef.current;
     if (!s) return;
     const onRack = s.rackTileIds.length;
@@ -150,7 +148,7 @@ export default function GameScreen() {
       grid: makeEmptyGrid(),
       rackTileIds: s.tiles.map((t) => t.id),
     });
-  }, []);
+  }, [hasWon]);
 
   useEffect(() => {
     const dateKey = getTodayDateKey();
@@ -193,11 +191,11 @@ export default function GameScreen() {
     const noInvalid = liveValidation.invalidWordCells.size === 0;
     const connected = liveValidation.isConnected;
     const win = allTilesUsed && noShort && noInvalid && connected;
-    if (win && !hasWonRef.current) {
-      setHasWon(true);
+    setHasWon(win);
+    if (win && !showWinModal) {
       setShowWinModal(true);
     }
-  }, [state, liveValidation]);
+  }, [state, liveValidation, showWinModal]);
 
   if (!state) {
     return (
