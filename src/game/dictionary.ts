@@ -19,7 +19,9 @@ function loadDictionary(): Promise<Set<string>> {
 
   loadPromise = (async () => {
     try {
-      const res = await fetch('/wordlist.txt', { cache: 'default' });
+      // Use Vite base URL so this works under GitHub Pages (/Dailygrid/)
+      const url = `${import.meta.env.BASE_URL}wordlist.txt`;
+      const res = await fetch(url, { cache: 'default' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       const words = text
