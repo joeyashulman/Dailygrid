@@ -37,6 +37,8 @@ export default function GameScreen() {
   const [hasWon, setHasWon] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const validationRequestRef = useRef(0);
+  const pendingValidationReqRef = useRef(0);
+  const latestValidatedReqRef = useRef(0);
   const [dragPreview, setDragPreview] = useState<{ value: string; x: number; y: number } | null>(
     null
   );
@@ -164,15 +166,18 @@ export default function GameScreen() {
   useEffect(() => {
     if (!state) return;
     const req = ++validationRequestRef.current;
+    pendingValidationReqRef.current = req;
     computeLiveValidationAsync(state, checkWord)
       .then((result) => {
         if (req === validationRequestRef.current) {
+          latestValidatedReqRef.current = req;
           setLiveValidation(result);
         }
       })
       .catch((err) => {
         console.error('Word validation failed:', err);
         if (req === validationRequestRef.current) {
+          latestValidatedReqRef.current = req;
           setLiveValidation({
             invalidWordCells: new Set(),
             validWordCells: new Set(),
@@ -191,6 +196,12 @@ export default function GameScreen() {
     const noInvalid = liveValidation.invalidWordCells.size === 0;
     const connected = liveValidation.isConnected;
     const win = allTilesUsed && noShort && noInvalid && connected;
+    const isFresh = latestValidatedReqRef.current === pendingValidationReqRef.current;
+    // Prevent false wins while validation is still "in flight".
+    if (!isFresh) {
+      setHasWon(false);
+      return;
+    }
     setHasWon(win);
     if (win && !showWinModal) {
       setShowWinModal(true);
